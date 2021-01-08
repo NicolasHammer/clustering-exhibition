@@ -27,11 +27,11 @@ class KMeans():
             range(features.shape[1]))[0:self.n_clusters]
         self.means = features[:, init_mean_indices]
 
-        old_assignments = self.update_assignments(features)
+        old_assignments = self._update_assignments(features)
 
         while True:
-            self.means = self.update_means(features, old_assignments)
-            new_assignments = self.update_assignments(features)
+            self.means = self._update_means(features, old_assignments)
+            new_assignments = self._update_assignments(features)
 
             if np.allclose(old_assignments, new_assignments):
                 break
@@ -50,9 +50,9 @@ class KMeans():
         ------
         predictions (np.ndarray) - clusters labels of each example of shape (# examples)
         """
-        return self.update_assignments(features)
+        return self._update_assignments(features)
 
-    def update_assignments(self, features: np.ndarray) -> np.ndarray:
+    def _update_assignments(self, features: np.ndarray) -> np.ndarray:
         """
         Paramters
         ---------
@@ -67,7 +67,7 @@ class KMeans():
                     self.means[:, np.newaxis, :])**2, axis=0),
             axis=1)
 
-    def update_means(self, features: np.ndarray, assignments: np.ndarray) -> np.ndarray:
+    def _update_means(self, features: np.ndarray, assignments: np.ndarray) -> np.ndarray:
         """
         Parameters
         ----------
