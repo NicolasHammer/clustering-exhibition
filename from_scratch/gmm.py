@@ -60,24 +60,24 @@ class GMM():
 
         # Compute log likelihood under initial covariance and means
         prev_log_likelihood = -float("inf")
-        log_likelihood = sum(self._log_likelihood(features, j)
-                             for j in range(self.n_clusters))
+        log_likelihood = np.sum([self._log_likelihood(features, j)
+                                 for j in range(self.n_clusters)])
 
         # While log_likelihood is increasing significantly or max_iterations has
         # not been reached, continune EM until convergence
         n_iter = 0
-        while log_likelihood - prev_log_likelihood > 1e-4 and n_iter < self.max_iterations:
+        while abs(log_likelihood - prev_log_likelihood) > 1e-4 and n_iter < self.max_iterations:
             prev_log_likelihood = log_likelihood
 
             assignments = self._e_step(features)
             self.means, self.covariances, self.mixing_weights = self._m_step(
                 features, assignments)
 
-            log_likelihood = sum(self._log_likelihood(features, j)
-                                 for j in range(self.n_clusters))
+            log_likelihood = np.sum([self._log_likelihood(features, j)
+                                     for j in range(self.n_clusters)])
             n_iter += 1
 
-    def predict(self, features : np.ndarray) -> np.ndarray:
+    def predict(self, features: np.ndarray) -> np.ndarray:
         """
         Given features, predict the label of each sample (i.e. the index of the Gaussian
         with the higest posterior for that sample).
@@ -90,8 +90,8 @@ class GMM():
         ------
         predictions (np.ndarray) - predicted assignments to each cluster for each sample of
             shape (# samples)
-        """ 
-        return np.argmax(self._e_step(features), axis = 1)
+        """
+        return np.argmax(self._e_step(features), axis=1)
 
     def _e_step(self, features: np.ndarray) -> np.ndarray:
         """
@@ -132,17 +132,19 @@ class GMM():
         updated_means = np.matmul(features, assignments)/N
 
         # Covariance Update
-        updated_covariances = np.ndarray([
-            assignments[:, cluster_idx] *
-            (features - updated_means[:, cluster_idx])**2/N[cluster_idx]
-            for cluster_idx in range(0, self.n_clusters)
-        ])  # shape == (self.n_clusters, # features)
+        updated_covariances = np.ndarray(
+            (self.n_clusters, features.shape[0]))
+        for cluster_idx in range(0, self.n_clusters):
+            updated_covariances[cluster_idx] = np.sum(assignments[:, cluster_idx].reshape(
+                (assignments.shape[0], 1)) * (features.T - updated_means[:, cluster_idx])**2/N[cluster_idx], axis=0)
 
         # Mixing weights update
         updated_mixing_weights = np.mean(
             assignments, axis=0)  # shape == (n_clusters)
 
-        return updated_means, updated_covariances, updated_mixing_weights
+        return (updated_means,
+            (updated_covariances if self.covariance_type == "diagonal" else np.mean(updated_covariances, axis=1)),
+            updated_mixing_weights)
 
     def _log_likelihood(self, features: np.ndarray, k_idx: int) -> np.ndarray:
         """
@@ -161,7 +163,7 @@ class GMM():
         """
         return (np.log(self.mixing_weights[k_idx])
                 + multivariate_normal.logpdf(x=features.T,
-                                             mean=self.means[k_idx],
+                                             mean=self.means[:, k_idx],
                                              cov=self.covariances[k_idx])).T
 
     def _posterior(self, features: np.ndarray, k: int) -> np.ndarray:
@@ -184,7 +186,7 @@ class GMM():
         ])
 
         # Logsumexp trick
-        max_value = denominator.max(axis=1, keepdims=True)
+        max_value = denominator.max(axis=0, keepdims=True)
         denominator_sum = max_value + \
-            np.log(np.sum(np.exp(denominator - max_value), axis=1))
-        return np.exp(numereator - denominator_sum)
+            np.log(np.sum(np.exp(denominator - max_value), axis=0))
+        return np.exp(numereator - denominator_sum).flatten()

@@ -9,11 +9,13 @@ class KMeans():
     ----------------
     n_clusters (int) - the number of clusters to cluster the data into\n
     means (np.ndarray) - the means of each cluster of shape (# features, n_clusters)
+    assignments (np.ndarray) - the assignments of each data point
     """
 
     def __init__(self, n_clusters: int):
         self.n_clusters = n_clusters
         self.means = None
+        self.assignments = None
 
     def fit(self, features: np.ndarray) -> None:
         """
@@ -23,18 +25,16 @@ class KMeans():
         ----------
         features (np.ndarray) - data to be trained on of shape (# features, # examples)
         """
-        init_mean_indices = np.random.permutation(
-            range(features.shape[1]))[0:self.n_clusters]
-        self.means = features[:, init_mean_indices]
+        self._initialize_means(features)
 
         old_assignments = self._update_assignments(features)
-
         while True:
             self.means = self._update_means(features, old_assignments)
             new_assignments = self._update_assignments(features)
 
             if np.allclose(old_assignments, new_assignments):
-                break
+                self.assignments = new_assignments
+                return
             else:
                 old_assignments = new_assignments
 
@@ -52,9 +52,30 @@ class KMeans():
         """
         return self._update_assignments(features)
 
+    def _initialize_means(self, features: np.ndarray) -> None:
+        """
+        Initialize self.means using the k-means++ method
+        """
+        sample_idxs = np.array(range(0, features.shape[1]))
+
+        previous_idxs = np.array(np.random.choice(sample_idxs)).reshape((1))
+        self.means = features[:, previous_idxs[0]
+                              ].reshape((features.shape[0], 1))
+
+        for _ in range(1, self.n_clusters):
+            unchecked_points = np.delete(features, previous_idxs, axis=1)
+            # Compute distances
+            distances = np.min(np.sum((
+                unchecked_points[:, np.newaxis, :]
+                - self.means[:, :, np.newaxis])**2, axis=0), axis=0)
+
+            # Choose next idx
+            self.means = np.concatenate((self.means, unchecked_points[:, np.argmax(
+                distances)].reshape((features.shape[0], 1))), axis=1)
+
     def _update_assignments(self, features: np.ndarray) -> np.ndarray:
         """
-        Paramters
+        Parameters
         ---------
         features (np.ndarray) - data of shape (# features, # examples)
 
