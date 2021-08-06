@@ -1,6 +1,7 @@
 import numpy as np
 from .kmeans import KMeans
 from scipy.stats import multivariate_normal
+from typing import Tuple
 
 
 class GMM():
@@ -109,7 +110,7 @@ class GMM():
             self._posterior(features, cluster_idx) for cluster_idx in range(0, self.n_clusters)
         ]).T
 
-    def _m_step(self, features: np.ndarray, assignments: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray):
+    def _m_step(self, features: np.ndarray, assignments: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """"
         The maximization step in Expectation-Maximization.
 
